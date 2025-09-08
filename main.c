@@ -26,35 +26,38 @@ int main(void) {
 	initscr(); // Start curses
     noecho(); // Avoid user inputs to appear on screen
     char input;
-    bool game_over = false;
+    char direction = 'd';
     int y = PLAYZONE_Y / 2, x = PLAYZONE_X / 2;
-
+    
     WINDOW *main_window = draw_playzone();
     WINDOW *play_window = newwin(PLAYZONE_Y - 1, PLAYZONE_X - 1, PLAYZONE_Y - 1, PLAYZONE_X - 1);
-
-    do {
-        input = getch();
-        switch (input) {
-            case 'q':
-            game_over = true;
-            case 'w':
-                y--;
-                break;
-            case 's':
-                y++;
-                break;
-            case 'a':
-                x--;
-                break;
-            case 'd':
-                x++;
-                break;
+    nodelay(play_window, true); // Make listening for input non blocking
+    
+    while ((input = wgetch(play_window)) != 'q') {
+        // If a key was pressed, assign direction
+        if (input != ERR && input != direction) {
+            direction = input;
         }
-        wclear(play_window);
+        switch (direction) {
+            case 'w':
+            y--;
+            break;
+            case 's':
+            y++;
+            break;
+            case 'a':
+            x--;
+            break;
+            case 'd':
+            x++;
+            break;
+        }
+        // wclear(play_window);
         move(y, x);
         addch('#');
         refresh();
-    } while (!game_over);
+        usleep(150000);
+    }
 
 	endwin();
 	return 0;
