@@ -27,8 +27,15 @@ struct Food {
     bool eaten;
 };
 
+struct Snake {
+    int x;
+    int y;
+    struct Snake *next_snake;
+};
+
 WINDOW *draw_playzone(void);
-void move_snake(WINDOW *play_window, char direction, int *x, int *y);
+struct Snake create_snake(int x, int y);
+void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *x, int *y);
 struct Food create_food_particle(void);
 void draw_food_particle(WINDOW *food_window, int x, int y);
 bool window_border_touched(int x, int y);
@@ -59,6 +66,7 @@ int main(void) {
     WINDOW *food_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_X_START, PLAYABLE_ZONE_X_START);
     nodelay(play_window, true); // Make listening for input non blocking
     
+    struct Snake snake = create_snake(x, y);
     struct Food food_particle = create_food_particle();
 
     while ((input = wgetch(play_window)) != 'q') {
@@ -79,7 +87,7 @@ int main(void) {
                 direction = input;
             }
         }
-        move_snake(play_window, direction, &x, &y);
+        move_snake(play_window, &snake, direction, &x, &y);
         
         // Finish game if border is touched
         if (window_border_touched(x, y)) {
@@ -115,7 +123,14 @@ WINDOW *draw_playzone(void) {
     return win;
 }
 
-void move_snake(WINDOW *play_window, char direction, int *x, int *y) {
+struct Snake create_snake(int x, int y) {
+    struct Snake snake;
+    snake.x = x;
+    snake.y = y;
+    return snake;
+}
+
+void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *x, int *y) {
     switch (direction) {
         case 'w':
             (*y)--;
@@ -133,6 +148,8 @@ void move_snake(WINDOW *play_window, char direction, int *x, int *y) {
             break;
     }
     werase(play_window);
+    snake->x = *x;
+    snake->y = *y;
     wmove(play_window, *y, *x);
     waddch(play_window, '#');
 }
