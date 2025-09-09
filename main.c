@@ -19,7 +19,7 @@ Steps to create the game:
 #include <unistd.h>
 
 WINDOW *draw_playzone(void);
-bool did_cursor_touch_window_border(int x, int y);
+bool window_border_touched(int x, int y);
 bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
 
@@ -67,6 +67,14 @@ int main(void) {
         wmove(play_window, y, x);
         waddch(play_window, '#');
         refresh();
+
+        // Finish game if border is touched
+        if (window_border_touched(x, y)) {
+            printw("Game over!");
+            refresh();
+            usleep(1500000);
+            break;
+        }
         usleep(150000);
     }
 
@@ -91,8 +99,11 @@ WINDOW *draw_playzone(void) {
     return win;
 }
 
-bool did_cursor_touch_window_border(int x, int y) {
-    return 0;
+bool window_border_touched(int x, int y) {
+    if ((x <= 1) | (x >= PLAYABLE_ZONE_COLS) | (y <= 1) | (y >= PLAYABLE_ZONE_ROWS)) {
+        return true;
+    }
+    return false;
 }
 
 bool is_input_correct(char input) {
