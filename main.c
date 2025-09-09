@@ -35,7 +35,7 @@ int main(void) {
 	initscr(); // Start curses
     noecho(); // Avoid user inputs to appear on screen
 
-    int score = 1;
+    int score = 0;
     char input; // Initialise input to be populated on loop
     char direction = 'd'; // Snake will start moving to the right when game starts
     int start_x_position = PLAYABLE_ZONE_COLS / 2, start_y_position = PLAYABLE_ZONE_ROWS / 2; 
