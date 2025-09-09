@@ -19,8 +19,11 @@ Steps to create the game:
 #include <unistd.h>
 
 WINDOW *draw_playzone(void);
+bool is_input_correct(char input);
+bool is_direction_opposite(char input, char direction);
 
 int PLAYZONE_X = 126, PLAYZONE_Y = 50;
+char DIRECTIONS [4] = {'w', 'a', 's', 'd'};
 
 int main(void) {
 	initscr(); // Start curses
@@ -35,22 +38,26 @@ int main(void) {
     
     while ((input = wgetch(play_window)) != 'q') {
         // If a key was pressed, assign direction
-        if (input != ERR && input != direction) {
-            direction = input;
+        if (input != ERR && is_input_correct(input)) {
+            if (!is_direction_opposite(input, direction)) {
+                direction = input;
+            }
         }
         switch (direction) {
             case 'w':
-            y--;
-            break;
+                y--;
+                break;
             case 's':
-            y++;
-            break;
+                y++;
+                break;
             case 'a':
-            x--;
-            break;
+                x--;
+                break;
             case 'd':
-            x++;
-            break;
+                x++;
+                break;
+            default:
+                break;
         }
         // wclear(play_window);
         move(y, x);
@@ -78,4 +85,39 @@ WINDOW *draw_playzone(void) {
         addch('*');
     }
     return win;
+}
+
+bool is_input_correct(char input) {
+    for (int i = 0; i < (sizeof(DIRECTIONS) / sizeof(DIRECTIONS[0])); i++) {
+        if (input == DIRECTIONS[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool is_direction_opposite(char input, char direction) {
+    switch (direction) {
+        case 'w':
+            if (input == 's') {
+                return true;
+            }
+            break;
+        case 's':
+            if (input == 'w') {
+                return true;
+            }
+            break;
+        case 'a':
+            if (input == 'd') {
+                return true;
+            }
+            break;
+        case 'd':
+            if (input == 'a') {
+                return true;
+            }
+            break;
+    }
+    return false;
 }
