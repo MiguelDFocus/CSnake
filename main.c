@@ -20,10 +20,11 @@ Steps to create the game:
 #include <unistd.h>
 
 WINDOW *draw_playzone(void);
+void move_snake(WINDOW *play_window, char direction, int *x, int *y);
 bool window_border_touched(int x, int y);
 bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
-void show_end_game_message(WINDOW *play_window, int start_x_position, int start_y_position);
+void show_end_game_message(WINDOW *play_window, int start_x_position, int start_y_position, int score);
 
 const int MAIN_WINDOW_COLS = 120, MAIN_WINDOW_ROWS = 30;
 const int PLAYABLE_ZONE_COLS = MAIN_WINDOW_COLS - 1, PLAYABLE_ZONE_ROWS = MAIN_WINDOW_ROWS - 1;
@@ -34,10 +35,11 @@ int main(void) {
 	initscr(); // Start curses
     noecho(); // Avoid user inputs to appear on screen
 
+    int score = 1;
     char input; // Initialise input to be populated on loop
     char direction = 'd'; // Snake will start moving to the right when game starts
-    int start_y_position = PLAYABLE_ZONE_ROWS / 2, start_x_position = PLAYABLE_ZONE_COLS / 2; 
-    int y = start_y_position, x = start_x_position; // Get the middle of the playable window
+    int start_x_position = PLAYABLE_ZONE_COLS / 2, start_y_position = PLAYABLE_ZONE_ROWS / 2; 
+    int x = start_x_position, y = start_y_position; // Get the middle of the playable window
     
     draw_playzone(); // Draw a square to act as play zone
     WINDOW *play_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_X_START, PLAYABLE_ZONE_X_START);
@@ -50,33 +52,14 @@ int main(void) {
                 direction = input;
             }
         }
-        switch (direction) {
-            case 'w':
-                y--;
-                break;
-            case 's':
-                y++;
-                break;
-            case 'a':
-                x--;
-                break;
-            case 'd':
-                x++;
-                break;
-            default:
-                break;
-        }
-        werase(play_window);
-        wmove(play_window, y, x);
-        waddch(play_window, '#');
-        refresh();
+        move_snake(play_window, direction, &x, &y);
 
         // Finish game if border is touched
         if (window_border_touched(x, y)) {
             usleep(500000);
             werase(play_window);
             wrefresh(play_window);
-            show_end_game_message(play_window, start_x_position, start_y_position);
+            show_end_game_message(play_window, start_x_position, start_y_position, score);
             break;
         }
         usleep(150000);
@@ -101,6 +84,29 @@ WINDOW *draw_playzone(void) {
         addch('*');
     }
     return win;
+}
+
+void move_snake(WINDOW *play_window, char direction, int *x, int *y) {
+    switch (direction) {
+        case 'w':
+            (*y)--;
+            break;
+        case 's':
+            (*y)++;
+            break;
+        case 'a':
+            (*x)--;
+            break;
+        case 'd':
+            (*x)++;
+            break;
+        default:
+            break;
+    }
+    werase(play_window);
+    wmove(play_window, *y, *x);
+    waddch(play_window, '#');
+    refresh();
 }
 
 bool window_border_touched(int x, int y) {
@@ -145,9 +151,22 @@ bool is_direction_opposite(char input, char direction) {
     return false;
 }
 
-void show_end_game_message(WINDOW *play_window, int start_x_position, int start_y_position) {
-    move(start_y_position, start_x_position);
-    printw("Game over!");
+void show_end_game_message(WINDOW *play_window, int start_x_position, int start_y_position, int score) {
+    // Get the length of the base string, easier to do this way because string formatting is complicated
+    int base_string_length = 18; // "Game over! Score: <score>"
+    int score_length = 1;
+    // Ugly but fast way to check digits of an int, just check for 10, 100 and 1000
+    if (score < 10) {
+        score_length = 2;
+    } else if (score < 100) {
+        score_length = 3;
+    } else if (score < 1000) {
+        score_length = 4;
+    }
+    base_string_length += score_length;
+
+    move(start_y_position, start_x_position - (base_string_length / 2));
+    printw("Game over! Score: %i", score);
     refresh();
     usleep(1500000);
 }
