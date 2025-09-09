@@ -4,7 +4,7 @@ Steps to create the game:
     - Have a endless loop with ncurses open - Done
     - Draw a white square to the screen - Done
     - Make the white square move 1 block by user input - Done
-    - Make the square move forward automatically and only change direction if input is pressed
+    - Make the square move forward automatically and only change direction if input is pressed -- Done
     - Add collision to the borders of the screen
     - Add death and break out of loop if collission is detected
     - Add food, make it spawn on random points of the screen
@@ -19,21 +19,25 @@ Steps to create the game:
 #include <unistd.h>
 
 WINDOW *draw_playzone(void);
+bool did_cursor_touch_window_border(int x, int y);
 bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
 
-int PLAYZONE_X = 120, PLAYZONE_Y = 30;
-char DIRECTIONS [4] = {'w', 'a', 's', 'd'};
+const int MAIN_WINDOW_COLS = 120, MAIN_WINDOW_ROWS = 30;
+const int PLAYABLE_ZONE_COLS = MAIN_WINDOW_COLS - 1, PLAYABLE_ZONE_ROWS = MAIN_WINDOW_ROWS - 1;
+const int PLAYABLE_ZONE_X_START = 1, PLAYABLE_ZONE_Y_START = 1;
+const char DIRECTIONS [4] = {'w', 'a', 's', 'd'};
 
 int main(void) {
 	initscr(); // Start curses
     noecho(); // Avoid user inputs to appear on screen
-    char input;
-    char direction = 'd';
-    int y = PLAYZONE_Y / 2, x = PLAYZONE_X / 2;
+
+    char input; // Initialise input to be populated on loop
+    char direction = 'd'; // Snake will start moving to the right when game starts
+    int y = PLAYABLE_ZONE_ROWS / 2, x = PLAYABLE_ZONE_COLS / 2; // Get the middle of the playable window
     
     WINDOW *main_window = draw_playzone();
-    WINDOW *play_window = newwin(PLAYZONE_Y - 1, PLAYZONE_X - 1, 1, 1);
+    WINDOW *play_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_X_START, PLAYABLE_ZONE_X_START);
     nodelay(play_window, true); // Make listening for input non blocking
     
     while ((input = wgetch(play_window)) != 'q') {
@@ -71,20 +75,24 @@ int main(void) {
 }
 
 WINDOW *draw_playzone(void) {
-    WINDOW *win = newwin(PLAYZONE_Y, PLAYZONE_X, PLAYZONE_Y, PLAYZONE_X);
-    for (int i = 0; i < PLAYZONE_X; i++) {
+    WINDOW *win = newwin(MAIN_WINDOW_ROWS, MAIN_WINDOW_COLS, MAIN_WINDOW_ROWS, MAIN_WINDOW_COLS);
+    for (int i = 0; i < MAIN_WINDOW_COLS; i++) {
         move(0, i);
         addch('*');
-        move(PLAYZONE_Y, i);
+        move(MAIN_WINDOW_ROWS, i);
         addch('*');
     }
-    for (int i = 0; i < PLAYZONE_Y; i++) {
+    for (int i = 0; i < MAIN_WINDOW_ROWS; i++) {
         move(i, 0);
         addch('*');
-        move(i, PLAYZONE_X);
+        move(i, MAIN_WINDOW_COLS);
         addch('*');
     }
     return win;
+}
+
+bool did_cursor_touch_window_border(int x, int y) {
+    return 0;
 }
 
 bool is_input_correct(char input) {
