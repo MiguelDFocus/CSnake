@@ -22,7 +22,7 @@ WINDOW *draw_playzone(void);
 bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
 
-int PLAYZONE_X = 126, PLAYZONE_Y = 50;
+int PLAYZONE_X = 120, PLAYZONE_Y = 30;
 char DIRECTIONS [4] = {'w', 'a', 's', 'd'};
 
 int main(void) {
@@ -33,7 +33,7 @@ int main(void) {
     int y = PLAYZONE_Y / 2, x = PLAYZONE_X / 2;
     
     WINDOW *main_window = draw_playzone();
-    WINDOW *play_window = newwin(PLAYZONE_Y - 1, PLAYZONE_X - 1, PLAYZONE_Y - 1, PLAYZONE_X - 1);
+    WINDOW *play_window = newwin(PLAYZONE_Y - 1, PLAYZONE_X - 1, 1, 1);
     nodelay(play_window, true); // Make listening for input non blocking
     
     while ((input = wgetch(play_window)) != 'q') {
@@ -59,9 +59,9 @@ int main(void) {
             default:
                 break;
         }
-        // wclear(play_window);
-        move(y, x);
-        addch('#');
+        werase(play_window);
+        wmove(play_window, y, x);
+        waddch(play_window, '#');
         refresh();
         usleep(150000);
     }
