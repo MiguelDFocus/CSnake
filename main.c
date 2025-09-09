@@ -5,8 +5,9 @@ Steps to create the game:
     - Draw a white square to the screen - Done
     - Make the white square move 1 block by user input - Done
     - Make the square move forward automatically and only change direction if input is pressed -- Done
-    - Add collision to the borders of the screen
-    - Add death and break out of loop if collission is detected
+    - Add collision to the borders of the screen -- Done
+    - Add death and break out of loop if collission is detected -- Done
+    - Add death when touching your own tail
     - Add food, make it spawn on random points of the screen
     - Add collision to the food, make it disappear on collision with snake
     - Increase length of snake when food is consumed
@@ -22,6 +23,7 @@ WINDOW *draw_playzone(void);
 bool window_border_touched(int x, int y);
 bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
+void show_end_game_message(WINDOW *play_window, int start_x_position, int start_y_position);
 
 const int MAIN_WINDOW_COLS = 120, MAIN_WINDOW_ROWS = 30;
 const int PLAYABLE_ZONE_COLS = MAIN_WINDOW_COLS - 1, PLAYABLE_ZONE_ROWS = MAIN_WINDOW_ROWS - 1;
@@ -34,9 +36,10 @@ int main(void) {
 
     char input; // Initialise input to be populated on loop
     char direction = 'd'; // Snake will start moving to the right when game starts
-    int y = PLAYABLE_ZONE_ROWS / 2, x = PLAYABLE_ZONE_COLS / 2; // Get the middle of the playable window
+    int start_y_position = PLAYABLE_ZONE_ROWS / 2, start_x_position = PLAYABLE_ZONE_COLS / 2; 
+    int y = start_y_position, x = start_x_position; // Get the middle of the playable window
     
-    WINDOW *main_window = draw_playzone();
+    draw_playzone(); // Draw a square to act as play zone
     WINDOW *play_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_X_START, PLAYABLE_ZONE_X_START);
     nodelay(play_window, true); // Make listening for input non blocking
     
@@ -70,9 +73,10 @@ int main(void) {
 
         // Finish game if border is touched
         if (window_border_touched(x, y)) {
-            printw("Game over!");
-            refresh();
-            usleep(1500000);
+            usleep(500000);
+            werase(play_window);
+            wrefresh(play_window);
+            show_end_game_message(play_window, start_x_position, start_y_position);
             break;
         }
         usleep(150000);
@@ -139,4 +143,11 @@ bool is_direction_opposite(char input, char direction) {
             break;
     }
     return false;
+}
+
+void show_end_game_message(WINDOW *play_window, int start_x_position, int start_y_position) {
+    move(start_y_position, start_x_position);
+    printw("Game over!");
+    refresh();
+    usleep(1500000);
 }
