@@ -56,7 +56,7 @@ int main(void) {
 
         // Finish game if border is touched
         if (window_border_touched(x, y)) {
-            usleep(500000);
+            usleep(1500000);
             werase(play_window);
             wrefresh(play_window);
             show_end_game_message(play_window, start_x_position, start_y_position, score);
@@ -110,7 +110,7 @@ void move_snake(WINDOW *play_window, char direction, int *x, int *y) {
 }
 
 bool window_border_touched(int x, int y) {
-    if ((x <= 1) | (x >= PLAYABLE_ZONE_COLS) | (y <= 1) | (y >= PLAYABLE_ZONE_ROWS)) {
+    if ((x < 0) | (x >= PLAYABLE_ZONE_COLS) | (y < 0) | (y >= PLAYABLE_ZONE_ROWS)) {
         return true;
     }
     return false;
