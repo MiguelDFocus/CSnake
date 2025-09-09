@@ -7,24 +7,34 @@ Steps to create the game:
     - Make the square move forward automatically and only change direction if input is pressed -- Done
     - Add collision to the borders of the screen -- Done
     - Add death and break out of loop if collission is detected -- Done
-    - Add death when touching your own tail
-    - Add food, make it spawn on random points of the screen
-    - Add collision to the food, make it disappear on collision with snake
-    - Increase length of snake when food is consumed
+    - Add food, make it spawn on random points of the screen -- Done
+    - Add collision to the food, make it disappear on collision with snake -- Done
     - Keep track of the score
+    - Increase length of snake when food is consumed
+    - Add death when touching your own tail
 */
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <ncurses.h>
 #include <unistd.h>
+#include <time.h>
+
+struct Food {
+    int x;
+    int y;
+    bool eaten;
+};
 
 WINDOW *draw_playzone(void);
 void move_snake(WINDOW *play_window, char direction, int *x, int *y);
+struct Food create_food_particle(void);
+void draw_food_particle(WINDOW *food_window, int x, int y);
 bool window_border_touched(int x, int y);
 bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
-void show_end_game_message(WINDOW *play_window, int start_x_position, int start_y_position, int score);
+void show_end_game_message(int start_x_position, int start_y_position, int score);
 
 const int MAIN_WINDOW_COLS = 120, MAIN_WINDOW_ROWS = 30;
 const int PLAYABLE_ZONE_COLS = MAIN_WINDOW_COLS - 1, PLAYABLE_ZONE_ROWS = MAIN_WINDOW_ROWS - 1;
@@ -32,20 +42,37 @@ const int PLAYABLE_ZONE_X_START = 1, PLAYABLE_ZONE_Y_START = 1;
 const char DIRECTIONS [4] = {'w', 'a', 's', 'd'};
 
 int main(void) {
+    srand(time(0));
 	initscr(); // Start curses
     noecho(); // Avoid user inputs to appear on screen
+    curs_set(0);
 
+    int start_x_position = PLAYABLE_ZONE_COLS / 2, start_y_position = PLAYABLE_ZONE_ROWS / 2; 
+    int x = start_x_position, y = start_y_position; // Get the middle of the playable window
     int score = 0;
     char input; // Initialise input to be populated on loop
     char direction = 'd'; // Snake will start moving to the right when game starts
-    int start_x_position = PLAYABLE_ZONE_COLS / 2, start_y_position = PLAYABLE_ZONE_ROWS / 2; 
-    int x = start_x_position, y = start_y_position; // Get the middle of the playable window
+
     
-    draw_playzone(); // Draw a square to act as play zone
+    WINDOW *main_window = draw_playzone(); // Draw a square to act as play zone
     WINDOW *play_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_X_START, PLAYABLE_ZONE_X_START);
+    WINDOW *food_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_X_START, PLAYABLE_ZONE_X_START);
     nodelay(play_window, true); // Make listening for input non blocking
     
+    struct Food food_particle = create_food_particle();
+
     while ((input = wgetch(play_window)) != 'q') {
+        // Create food particle if needed
+        if (food_particle.eaten) {
+            food_particle = create_food_particle();
+        }
+        
+        if (x == food_particle.x && y == food_particle.y) {
+            score++;
+            food_particle.eaten = true;
+        }
+        
+        draw_food_particle(food_window, food_particle.x, food_particle.y);
         // If a key was pressed, assign direction
         if (input != ERR && is_input_correct(input)) {
             if (!is_direction_opposite(input, direction)) {
@@ -53,13 +80,13 @@ int main(void) {
             }
         }
         move_snake(play_window, direction, &x, &y);
-
+        
         // Finish game if border is touched
         if (window_border_touched(x, y)) {
-            usleep(1500000);
+            usleep(500000);
             werase(play_window);
             wrefresh(play_window);
-            show_end_game_message(play_window, start_x_position, start_y_position, score);
+            show_end_game_message(start_x_position, start_y_position, score);
             break;
         }
         usleep(150000);
@@ -83,6 +110,8 @@ WINDOW *draw_playzone(void) {
         move(i, MAIN_WINDOW_COLS);
         addch('*');
     }
+
+    refresh();
     return win;
 }
 
@@ -106,10 +135,28 @@ void move_snake(WINDOW *play_window, char direction, int *x, int *y) {
     werase(play_window);
     wmove(play_window, *y, *x);
     waddch(play_window, '#');
-    refresh();
+}
+
+struct Food create_food_particle(void) {
+    int x = rand() % PLAYABLE_ZONE_COLS + 1;
+    int y = rand() % PLAYABLE_ZONE_ROWS + 1;
+
+    struct Food food_particle;
+    food_particle.x = x;
+    food_particle.y = y;
+    food_particle.eaten = false;
+    return food_particle;
+}
+
+void draw_food_particle(WINDOW *food_window, int x, int y) {
+    wmove(food_window, y, x);
+    waddch(food_window, '@');
+    wrefresh(food_window);
 }
 
 bool window_border_touched(int x, int y) {
+    // Upper and left bounds have to be checked "greeedily"
+    // Due to the window being created 1 pixel down and right to not collide with main areaS
     if ((x < 0) | (x >= PLAYABLE_ZONE_COLS) | (y < 0) | (y >= PLAYABLE_ZONE_ROWS)) {
         return true;
     }
@@ -151,7 +198,7 @@ bool is_direction_opposite(char input, char direction) {
     return false;
 }
 
-void show_end_game_message(WINDOW *play_window, int start_x_position, int start_y_position, int score) {
+void show_end_game_message(int start_x_position, int start_y_position, int score) {
     // Get the length of the base string, easier to do this way because string formatting is complicated
     int base_string_length = 18; // "Game over! Score: <score>"
     int score_length = 1;
