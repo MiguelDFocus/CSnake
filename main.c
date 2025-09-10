@@ -35,6 +35,8 @@ struct Snake {
 
 WINDOW *draw_playzone(void);
 struct Snake create_snake(int x, int y);
+struct Snake *get_tail(struct Snake *snake);
+void increase_snake_length(struct Snake *snake, char direction);
 void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *x, int *y);
 struct Food create_food_particle(void);
 void draw_food_particle(WINDOW *food_window, int x, int y);
@@ -43,7 +45,7 @@ bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
 void show_end_game_message(int start_x_position, int start_y_position, int score);
 
-const int MAIN_WINDOW_COLS = 120, MAIN_WINDOW_ROWS = 30;
+const int MAIN_WINDOW_COLS = 60, MAIN_WINDOW_ROWS = 15;
 const int PLAYABLE_ZONE_COLS = MAIN_WINDOW_COLS - 1, PLAYABLE_ZONE_ROWS = MAIN_WINDOW_ROWS - 1;
 const int PLAYABLE_ZONE_X_START = 1, PLAYABLE_ZONE_Y_START = 1;
 const char DIRECTIONS [4] = {'w', 'a', 's', 'd'};
@@ -70,23 +72,25 @@ int main(void) {
     struct Food food_particle = create_food_particle();
 
     while ((input = wgetch(play_window)) != 'q') {
-        // Create food particle if needed
-        if (food_particle.eaten) {
-            food_particle = create_food_particle();
-        }
-        
-        if (x == food_particle.x && y == food_particle.y) {
-            score++;
-            food_particle.eaten = true;
-        }
-        
-        draw_food_particle(food_window, food_particle.x, food_particle.y);
         // If a key was pressed, assign direction
         if (input != ERR && is_input_correct(input)) {
             if (!is_direction_opposite(input, direction)) {
                 direction = input;
             }
         }
+        // Create food particle if needed
+        if (food_particle.eaten) {
+            food_particle = create_food_particle();
+        }
+        
+        if (x == food_particle.x && y == food_particle.y) {
+            // TODO: Fix bug where food particle starts moving in same direction as snake
+            score++;
+            increase_snake_length(&snake, direction);
+            food_particle.eaten = true;
+        }
+
+        draw_food_particle(food_window, food_particle.x, food_particle.y);
         move_snake(play_window, &snake, direction, &x, &y);
         
         // Finish game if border is touched
@@ -101,6 +105,7 @@ int main(void) {
     }
 
 	endwin();
+    // Destroy snake linked list to avoid memory leaks
 	return 0;
 }
 
@@ -127,7 +132,48 @@ struct Snake create_snake(int x, int y) {
     struct Snake snake;
     snake.x = x;
     snake.y = y;
+    snake.next_snake = NULL;
     return snake;
+}
+
+struct Snake *get_tail(struct Snake *snake) {
+    while (snake->next_snake != NULL) {
+        snake = snake->next_snake;
+    }
+    return snake;
+}
+
+void increase_snake_length(struct Snake *snake, char direction) {
+    struct Snake *tail = get_tail(snake);
+    if (tail == NULL) {
+        return;
+    }
+
+    struct Snake *new_snake = malloc(sizeof(struct Snake));
+    if (new_snake == NULL) {
+        return;
+    }
+    
+    tail->next_snake = new_snake;
+    int x;
+    int y;
+    switch (direction) {
+        case 'w':
+        y = snake->y + 1;
+        break;
+        case 's':
+        y = snake->y - 1;
+        break;
+        case 'a':
+        x = snake->x + 1;
+        break;
+        case 'd':
+        x = snake->x - 1;
+        break;
+        default:
+        break;
+    }
+    *new_snake = create_snake(x, y);
 }
 
 void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *x, int *y) {
