@@ -22,32 +22,36 @@ Steps to create the game:
 #include <time.h>
 
 struct Food {
-    int x;
-    int y;
+    int row;
+    int col;
     bool eaten;
 };
 
 struct Snake {
-    int x;
-    int y;
+    int row;
+    int col;
     struct Snake *next_snake;
 };
 
-WINDOW *draw_playzone(void);
-struct Snake create_snake(int x, int y);
+void draw_zone(WINDOW *window, int rows, int cols, int row_start, int col_start);
+void draw_score(WINDOW *window, int rows, int cols, int row_start, int col_start, int score);
+struct Snake create_snake(int row, int col);
 struct Snake *get_tail(struct Snake *snake);
 void increase_snake_length(struct Snake *snake, char direction);
-void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *x, int *y);
+void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *row, int *col);
 struct Food create_food_particle(void);
-void draw_food_particle(WINDOW *food_window, int x, int y);
-bool window_border_touched(int x, int y);
+void draw_food_particle(WINDOW *food_window, int row, int col);
+bool window_border_touched(int row, int col);
 bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
-void show_end_game_message(int start_x_position, int start_y_position, int score);
+void show_end_game_message(WINDOW *play_window, int start_row, int start_col);
+void destroy_snake(struct Snake *snake);
 
 const int MAIN_WINDOW_COLS = 60, MAIN_WINDOW_ROWS = 15;
 const int PLAYABLE_ZONE_COLS = MAIN_WINDOW_COLS - 1, PLAYABLE_ZONE_ROWS = MAIN_WINDOW_ROWS - 1;
-const int PLAYABLE_ZONE_X_START = 1, PLAYABLE_ZONE_Y_START = 1;
+const int PLAYABLE_ZONE_ROW_START = 1, PLAYABLE_ZONE_COL_START = 1;
+const int SCORE_WINDOW_COLS = 30, SCORE_WINDOW_ROWS = 5;
+const int SCORE_ZONE_ROW_START = 1, SCORE_ZONE_COL_START = MAIN_WINDOW_COLS + 2;
 const char DIRECTIONS [4] = {'w', 'a', 's', 'd'};
 
 int main(void) {
@@ -56,19 +60,21 @@ int main(void) {
     noecho(); // Avoid user inputs to appear on screen
     curs_set(0);
 
-    int start_x_position = PLAYABLE_ZONE_COLS / 2, start_y_position = PLAYABLE_ZONE_ROWS / 2; 
-    int x = start_x_position, y = start_y_position; // Get the middle of the playable window
+    int start_row = PLAYABLE_ZONE_COLS / 2, start_col = PLAYABLE_ZONE_ROWS / 2; 
+    int row = start_row, col = start_col; // Get the middle of the playable window
     int score = 0;
     char input; // Initialise input to be populated on loop
     char direction = 'd'; // Snake will start moving to the right when game starts
 
-    
-    WINDOW *main_window = draw_playzone(); // Draw a square to act as play zone
-    WINDOW *play_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_X_START, PLAYABLE_ZONE_X_START);
-    WINDOW *food_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_X_START, PLAYABLE_ZONE_X_START);
+    WINDOW *main_window = newwin(MAIN_WINDOW_ROWS, MAIN_WINDOW_COLS, 0, 0);
+    draw_zone(main_window, MAIN_WINDOW_ROWS, MAIN_WINDOW_COLS, 0, 0); // Draw a square to act as play zone
+
+    WINDOW *play_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_COL_START, PLAYABLE_ZONE_ROW_START);
+    WINDOW *food_window = newwin(PLAYABLE_ZONE_ROWS, PLAYABLE_ZONE_COLS, PLAYABLE_ZONE_COL_START, PLAYABLE_ZONE_ROW_START);
+    WINDOW *score_window = newwin(SCORE_WINDOW_ROWS, SCORE_WINDOW_COLS, SCORE_ZONE_COL_START, SCORE_ZONE_ROW_START);
     nodelay(play_window, true); // Make listening for input non blocking
     
-    struct Snake snake = create_snake(x, y);
+    struct Snake snake = create_snake(row, col);
     struct Food food_particle = create_food_particle();
 
     while ((input = wgetch(play_window)) != 'q') {
@@ -83,55 +89,63 @@ int main(void) {
             food_particle = create_food_particle();
         }
         
-        if (x == food_particle.x && y == food_particle.y) {
+        if (row == food_particle.row && col == food_particle.col) {
             // TODO: Fix bug where food particle starts moving in same direction as snake
             score++;
             increase_snake_length(&snake, direction);
             food_particle.eaten = true;
         }
 
-        draw_food_particle(food_window, food_particle.x, food_particle.y);
-        move_snake(play_window, &snake, direction, &x, &y);
+        draw_food_particle(food_window, food_particle.row, food_particle.col);
+        move_snake(play_window, &snake, direction, &row, &col);
         
         // Finish game if border is touched
-        if (window_border_touched(x, y)) {
+        if (window_border_touched(row, col)) {
             usleep(500000);
-            werase(play_window);
-            wrefresh(play_window);
-            show_end_game_message(start_x_position, start_y_position, score);
+            show_end_game_message(play_window, start_row, start_col);
             break;
         }
+        draw_score(score_window, SCORE_WINDOW_ROWS, SCORE_WINDOW_COLS, SCORE_ZONE_ROW_START, SCORE_ZONE_COL_START, score);
         usleep(150000);
     }
 
 	endwin();
     // Destroy snake linked list to avoid memory leaks
+    destroy_snake(&snake);
 	return 0;
 }
 
-WINDOW *draw_playzone(void) {
-    WINDOW *win = newwin(MAIN_WINDOW_ROWS, MAIN_WINDOW_COLS, MAIN_WINDOW_ROWS, MAIN_WINDOW_COLS);
-    for (int i = 0; i < MAIN_WINDOW_COLS; i++) {
+void draw_zone(WINDOW *window, int rows, int cols, int row_start, int col_start) {
+    printf("Drawing starting from row: %i, and col: %i", row_start, col_start);
+    move(col_start, row_start);
+    for (int i = 0; i < cols; i++) {
         move(0, i);
         addch('*');
-        move(MAIN_WINDOW_ROWS, i);
+        move(rows, i);
         addch('*');
     }
-    for (int i = 0; i < MAIN_WINDOW_ROWS; i++) {
+    move(col_start, row_start);
+    for (int i = 0; i < rows; i++) {
         move(i, 0);
         addch('*');
-        move(i, MAIN_WINDOW_COLS);
+        move(i, cols);
         addch('*');
     }
 
     refresh();
-    return win;
 }
 
-struct Snake create_snake(int x, int y) {
+void draw_score(WINDOW *window, int rows, int cols, int row_start, int col_start, int score) {
+    werase(window);
+    draw_zone(window, rows, cols, row_start, col_start);
+    wprintw(window, "Score: %i", score);
+    wrefresh(window);
+}
+
+struct Snake create_snake(int row, int col) {
     struct Snake snake;
-    snake.x = x;
-    snake.y = y;
+    snake.row = row;
+    snake.col = col;
     snake.next_snake = NULL;
     return snake;
 }
@@ -159,16 +173,16 @@ void increase_snake_length(struct Snake *snake, char direction) {
     int y;
     switch (direction) {
         case 'w':
-        y = snake->y + 1;
+        y = snake->col + 1;
         break;
         case 's':
-        y = snake->y - 1;
+        y = snake->col - 1;
         break;
         case 'a':
-        x = snake->x + 1;
+        x = snake->row + 1;
         break;
         case 'd':
-        x = snake->x - 1;
+        x = snake->row - 1;
         break;
         default:
         break;
@@ -176,51 +190,51 @@ void increase_snake_length(struct Snake *snake, char direction) {
     *new_snake = create_snake(x, y);
 }
 
-void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *x, int *y) {
+void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *row, int *col) {
     switch (direction) {
         case 'w':
-            (*y)--;
+            (*col)--;
             break;
         case 's':
-            (*y)++;
+            (*col)++;
             break;
         case 'a':
-            (*x)--;
+            (*row)--;
             break;
         case 'd':
-            (*x)++;
+            (*row)++;
             break;
         default:
             break;
     }
     werase(play_window);
-    snake->x = *x;
-    snake->y = *y;
-    wmove(play_window, *y, *x);
+    snake->row = *row;
+    snake->col = *col;
+    wmove(play_window, *col, *row);
     waddch(play_window, '#');
 }
 
 struct Food create_food_particle(void) {
-    int x = rand() % PLAYABLE_ZONE_COLS + 1;
-    int y = rand() % PLAYABLE_ZONE_ROWS + 1;
+    int row = rand() % PLAYABLE_ZONE_COLS + 1;
+    int col = rand() % PLAYABLE_ZONE_ROWS + 1;
 
     struct Food food_particle;
-    food_particle.x = x;
-    food_particle.y = y;
+    food_particle.row = row;
+    food_particle.col = col;
     food_particle.eaten = false;
     return food_particle;
 }
 
-void draw_food_particle(WINDOW *food_window, int x, int y) {
-    wmove(food_window, y, x);
+void draw_food_particle(WINDOW *food_window, int row, int col) {
+    wmove(food_window, col, row);
     waddch(food_window, '@');
     wrefresh(food_window);
 }
 
-bool window_border_touched(int x, int y) {
+bool window_border_touched(int row, int col) {
     // Upper and left bounds have to be checked "greeedily"
     // Due to the window being created 1 pixel down and right to not collide with main areaS
-    if ((x < 0) | (x >= PLAYABLE_ZONE_COLS) | (y < 0) | (y >= PLAYABLE_ZONE_ROWS)) {
+    if ((row < 0) | (row >= PLAYABLE_ZONE_COLS) | (col < 0) | (col >= PLAYABLE_ZONE_ROWS)) {
         return true;
     }
     return false;
@@ -261,22 +275,21 @@ bool is_direction_opposite(char input, char direction) {
     return false;
 }
 
-void show_end_game_message(int start_x_position, int start_y_position, int score) {
-    // Get the length of the base string, easier to do this way because string formatting is complicated
-    int base_string_length = 18; // "Game over! Score: <score>"
-    int score_length = 1;
-    // Ugly but fast way to check digits of an int, just check for 10, 100 and 1000
-    if (score < 10) {
-        score_length = 2;
-    } else if (score < 100) {
-        score_length = 3;
-    } else if (score < 1000) {
-        score_length = 4;
-    }
-    base_string_length += score_length;
+void show_end_game_message(WINDOW *play_window, int start_row, int start_col) {
+    int base_string_length = 10; // "Game over! Score: <score>"
 
-    move(start_y_position, start_x_position - (base_string_length / 2));
-    printw("Game over! Score: %i", score);
-    refresh();
+    werase(play_window);
+    wrefresh(play_window);
+    wmove(play_window, start_col, start_row - (base_string_length / 2));
+    wprintw(play_window, "Game over!");
+    wrefresh(play_window);
     usleep(1500000);
+}
+
+void destroy_snake(struct Snake *snake) {
+    while (snake != NULL) {
+        struct Snake *tmp = snake;
+        snake = tmp->next_snake;
+        free(tmp);
+    }
 }
