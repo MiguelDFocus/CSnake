@@ -26,7 +26,6 @@ Steps to create the game:
 struct Food {
     int line;
     int col;
-    bool eaten;
 };
 
 struct Snake {
@@ -38,6 +37,7 @@ struct Snake {
 void draw_playing_zone(WINDOW *window);
 void draw_score(WINDOW *window, int line_start, int col_start, int score);
 void draw_end_game_message(WINDOW *play_window, int start_line, int start_col);
+void draw_snake(WINDOW *window, struct Snake *snake);
 struct Snake create_snake(int line, int col);
 struct Snake *get_tail(struct Snake *snake);
 void increase_snake_length(struct Snake *snake, char direction);
@@ -86,20 +86,17 @@ int main(void) {
                 direction = input;
             }
         }
-        // Create food particle if needed
-        if (food_particle.eaten) {
-            food_particle = create_food_particle();
-        }
         
         if (line == food_particle.line && col == food_particle.col) {
             // TODO: Fix bug where food particle starts moving in same direction as snake
             score++;
             increase_snake_length(&snake, direction);
-            food_particle.eaten = true;
+            food_particle = create_food_particle();
         }
 
-        draw_food_particle(food_window, food_particle.line, food_particle.col);
         move_snake(play_window, &snake, direction, &line, &col);
+        draw_snake(play_window, &snake);
+        draw_food_particle(food_window, food_particle.line, food_particle.col);
         draw_score(score_window, SCORE_ZONE_LINE_START, SCORE_ZONE_COL_START, score);
         
         // Finish game if border is touched
@@ -138,13 +135,23 @@ void draw_score(WINDOW *window, int line_start, int col_start, int score) {
 
 void draw_end_game_message(WINDOW *play_window, int start_line, int start_col) {
     int base_string_length = 10; // "Game over! Score: <score>"
-
+    
     werase(play_window);
     wrefresh(play_window);
     wmove(play_window, start_line, start_col - (base_string_length / 2));
     wprintw(play_window, "Game over!");
     wrefresh(play_window);
     usleep(1500000);
+}
+
+void draw_snake(WINDOW *window, struct Snake *snake) {
+    werase(window);
+    while (snake != NULL) {
+        wmove(window, snake->line, snake->col);
+        waddch(window, '#');
+        snake = snake->next_snake;
+    }
+    wrefresh(window);
 }
 
 struct Snake create_snake(int line, int col) {
@@ -174,49 +181,64 @@ void increase_snake_length(struct Snake *snake, char direction) {
     }
     
     tail->next_snake = new_snake;
-    int x;
-    int y;
+    int line = tail->line;
+    int col = tail->col;
     switch (direction) {
         case 'w':
-        y = snake->col + 1;
-        break;
+            line++;
+            break;
         case 's':
-        y = snake->col - 1;
-        break;
+            line--;
+            break;
         case 'a':
-        x = snake->line + 1;
-        break;
+            col++;
+            break;
         case 'd':
-        x = snake->line - 1;
-        break;
+            col--;
+            break;
         default:
-        break;
+            break;
     }
-    *new_snake = create_snake(x, y);
+    *new_snake = create_snake(line, col);
 }
 
 void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *line, int *col) {
+    /*
+    Save current snake state
+    Update current snake to previous snake state
+    Update current snake to be next snake
+    */
+    int previous_line = snake->line;
+    int previous_col = snake->col;
+
     switch (direction) {
-        case 'w':
-            (*line)--;
-            break;
+       case 'w':
+        (*line)--;
+       break;
         case 's':
-            (*line)++;
-            break;
+        (*line)++;
+       break;
         case 'a':
-            (*col)--;
-            break;
-        case 'd':
-            (*col)++;
-            break;
-        default:
-            break;
+        (*col)--;
+       break;
+       case 'd':
+        (*col)++;
+        break;
+       default:
+        break;
     }
-    werase(play_window);
     snake->line = *line;
     snake->col = *col;
-    wmove(play_window, *line, *col);
-    waddch(play_window, '#');
+
+    while ((snake = snake->next_snake) != NULL) {
+        struct Snake tmp = *snake;
+
+        snake->line = previous_line;
+        snake->col = previous_col;
+
+        previous_col = tmp.col;
+        previous_line = tmp.line;
+    }
 }
 
 struct Food create_food_particle(void) {
@@ -226,7 +248,6 @@ struct Food create_food_particle(void) {
     struct Food food_particle;
     food_particle.line = line;
     food_particle.col = col;
-    food_particle.eaten = false;
     return food_particle;
 }
 
