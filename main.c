@@ -11,9 +11,9 @@ Steps to create the game:
     - Add collision to the food, make it disappear on collision with snake -- Done
     - Keep track of the score -- Done
     - Increase length of snake when food is consumed -- Done
-    - Fix increasing size of snake
-    - Draw whole snake
-    - Make head change direction, then whole snake to follow one by one
+    - Fix increasing size of snake -- Done
+    - Draw whole snake -- Done
+    - Make head change direction, then whole snake to follow one by one -- Done
     - Add death when touching your own tail
 */
 
@@ -45,6 +45,7 @@ void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *l
 struct Food create_food_particle(void);
 void draw_food_particle(WINDOW *food_window, int line, int col);
 bool window_border_touched(int line, int col);
+bool tail_touched(struct Snake *snake, int line, int col);
 bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
 void destroy_snake(struct Snake *snake);
@@ -99,8 +100,8 @@ int main(void) {
         draw_food_particle(food_window, food_particle.line, food_particle.col);
         draw_score(score_window, SCORE_ZONE_LINE_START, SCORE_ZONE_COL_START, score);
         
-        // Finish game if border is touched
-        if (window_border_touched(line, col)) {
+        // Finish game if border or own tail is touched
+        if (window_border_touched(line, col) | tail_touched(&snake, line, col)) {
             usleep(500000);
             draw_end_game_message(play_window, start_line, start_col);
             break;
@@ -134,7 +135,7 @@ void draw_score(WINDOW *window, int line_start, int col_start, int score) {
 }
 
 void draw_end_game_message(WINDOW *play_window, int start_line, int start_col) {
-    int base_string_length = 10; // "Game over! Score: <score>"
+    int base_string_length = 10;
     
     werase(play_window);
     wrefresh(play_window);
@@ -256,6 +257,15 @@ bool window_border_touched(int line, int col) {
     // Due to the window being created 1 pixel down and right to not collide with main areaS
     if ((line < 0) | (line >= PLAYABLE_ZONE_LINES) | (col < 0) | (col >= PLAYABLE_ZONE_COLS)) {
         return true;
+    }
+    return false;
+}
+
+bool tail_touched(struct Snake *snake, int line, int col) {
+    while ((snake = snake->next_snake) != NULL) {
+        if (snake->col == col && snake->line == line) {
+            return true;
+        }
     }
     return false;
 }
