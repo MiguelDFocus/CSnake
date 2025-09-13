@@ -14,7 +14,7 @@ Steps to create the game:
     - Fix increasing size of snake -- Done
     - Draw whole snake -- Done
     - Make head change direction, then whole snake to follow one by one -- Done
-    - Add death when touching your own tail
+    - Add death when touching your own tail -- Done
 */
 
 #include <stdio.h>
@@ -38,7 +38,7 @@ void draw_playing_zone(WINDOW *window);
 void draw_score(WINDOW *window, int line_start, int col_start, int score);
 void draw_end_game_message(WINDOW *play_window, int start_line, int start_col);
 void draw_snake(WINDOW *window, struct Snake *snake);
-struct Snake create_snake(int line, int col);
+struct Snake *create_snake(int line, int col);
 struct Snake *get_tail(struct Snake *snake);
 void increase_snake_length(struct Snake *snake, char direction);
 void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *line, int *col);
@@ -50,7 +50,7 @@ bool is_input_correct(char input);
 bool is_direction_opposite(char input, char direction);
 void destroy_snake(struct Snake *snake);
 
-const int MAIN_WINDOW_COLS = 60, MAIN_WINDOW_LINES = 15;
+const int MAIN_WINDOW_COLS = 39, MAIN_WINDOW_LINES = 15;
 const int PLAYABLE_ZONE_COLS = MAIN_WINDOW_COLS - 2, PLAYABLE_ZONE_LINES = MAIN_WINDOW_LINES - 2;
 const int PLAYABLE_ZONE_LINE_START = 1, PLAYABLE_ZONE_COL_START = 1;
 const int SCORE_WINDOW_COLS = 15, SCORE_WINDOW_LINES = 5;
@@ -77,7 +77,7 @@ int main(void) {
     WINDOW *score_window = newwin(SCORE_WINDOW_LINES, SCORE_WINDOW_COLS, SCORE_ZONE_LINE_START, SCORE_ZONE_COL_START);
     nodelay(play_window, true); // Make listening for input non blocking
     
-    struct Snake snake = create_snake(line, col);
+    struct Snake *snake = create_snake(line, col);
     struct Food food_particle = create_food_particle();
 
     while ((input = wgetch(play_window)) != 'q') {
@@ -91,17 +91,17 @@ int main(void) {
         if (line == food_particle.line && col == food_particle.col) {
             // TODO: Fix bug where food particle starts moving in same direction as snake
             score++;
-            increase_snake_length(&snake, direction);
+            increase_snake_length(snake, direction);
             food_particle = create_food_particle();
         }
 
-        move_snake(play_window, &snake, direction, &line, &col);
-        draw_snake(play_window, &snake);
+        move_snake(play_window, snake, direction, &line, &col);
+        draw_snake(play_window, snake);
         draw_food_particle(food_window, food_particle.line, food_particle.col);
         draw_score(score_window, SCORE_ZONE_LINE_START, SCORE_ZONE_COL_START, score);
         
         // Finish game if border or own tail is touched
-        if (window_border_touched(line, col) | tail_touched(&snake, line, col)) {
+        if (window_border_touched(line, col) | tail_touched(snake, line, col)) {
             usleep(500000);
             draw_end_game_message(play_window, start_line, start_col);
             break;
@@ -111,7 +111,7 @@ int main(void) {
 
     endwin();
     // Destroy snake linked list to avoid memory leaks
-    destroy_snake(&snake);
+    destroy_snake(snake);
     return 0;
 }
 
@@ -155,11 +155,11 @@ void draw_snake(WINDOW *window, struct Snake *snake) {
     wrefresh(window);
 }
 
-struct Snake create_snake(int line, int col) {
-    struct Snake snake;
-    snake.line = line;
-    snake.col = col;
-    snake.next_snake = NULL;
+struct Snake *create_snake(int line, int col) {
+    struct Snake *snake = malloc(sizeof(struct Snake));
+    snake->line = line;
+    snake->col = col;
+    snake->next_snake = NULL;
     return snake;
 }
 
@@ -200,7 +200,7 @@ void increase_snake_length(struct Snake *snake, char direction) {
         default:
             break;
     }
-    *new_snake = create_snake(line, col);
+    new_snake = create_snake(line, col);
 }
 
 void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *line, int *col) {
