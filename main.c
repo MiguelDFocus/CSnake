@@ -89,7 +89,6 @@ int main(void) {
         }
         
         if (line == food_particle.line && col == food_particle.col) {
-            // TODO: Fix bug where food particle starts moving in same direction as snake
             score++;
             increase_snake_length(snake, direction);
             food_particle = create_food_particle();
@@ -101,7 +100,7 @@ int main(void) {
         draw_score(score_window, SCORE_ZONE_LINE_START, SCORE_ZONE_COL_START, score);
         
         // Finish game if border or own tail is touched
-        if (window_border_touched(line, col) | tail_touched(snake, line, col)) {
+        if (window_border_touched(line, col) || tail_touched(snake, line, col)) {
             usleep(500000);
             draw_end_game_message(play_window, start_line, start_col);
             break;
@@ -175,13 +174,7 @@ void increase_snake_length(struct Snake *snake, char direction) {
     if (tail == NULL) {
         return;
     }
-
-    struct Snake *new_snake = malloc(sizeof(struct Snake));
-    if (new_snake == NULL) {
-        return;
-    }
     
-    tail->next_snake = new_snake;
     int line = tail->line;
     int col = tail->col;
     switch (direction) {
@@ -200,7 +193,7 @@ void increase_snake_length(struct Snake *snake, char direction) {
         default:
             break;
     }
-    new_snake = create_snake(line, col);
+    tail->next_snake = create_snake(line, col);
 }
 
 void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *line, int *col) {
@@ -243,8 +236,8 @@ void move_snake(WINDOW *play_window, struct Snake *snake, char direction, int *l
 }
 
 struct Food create_food_particle(void) {
-    int line = rand() % PLAYABLE_ZONE_LINES + 1;
-    int col = rand() % PLAYABLE_ZONE_COLS + 1;
+    int line = rand() % PLAYABLE_ZONE_LINES;
+    int col = rand() % PLAYABLE_ZONE_COLS;
 
     struct Food food_particle;
     food_particle.line = line;
@@ -255,7 +248,7 @@ struct Food create_food_particle(void) {
 bool window_border_touched(int line, int col) {
     // Upper and left bounds have to be checked "greeedily"
     // Due to the window being created 1 pixel down and right to not collide with main areaS
-    if ((line < 0) | (line >= PLAYABLE_ZONE_LINES) | (col < 0) | (col >= PLAYABLE_ZONE_COLS)) {
+    if ((line < 0) || (line >= PLAYABLE_ZONE_LINES) || (col < 0) || (col >= PLAYABLE_ZONE_COLS)) {
         return true;
     }
     return false;
