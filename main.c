@@ -156,6 +156,9 @@ void draw_snake(WINDOW *window, struct Snake *snake) {
 
 struct Snake *create_snake(int line, int col) {
     struct Snake *snake = malloc(sizeof(struct Snake));
+    if (snake == NULL) {
+        return 0;
+    }
     snake->line = line;
     snake->col = col;
     snake->next_snake = NULL;
